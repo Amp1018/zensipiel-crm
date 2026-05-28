@@ -1303,25 +1303,39 @@ function guardarAccion(){
 
 function calcularEstado(acciones){
   if(!acciones||acciones.length===0)return 'pendiente';
-  // Ordenar por fecha desc
-  const sorted=[...acciones].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const tipos=acciones.map(a=>a.tipo);
   const resultados=acciones.map(a=>a.resultado||'');
   // Pedido
   if(tipos.includes('pedido'))return 'pedido';
   // Descartado
-  if(resultados.some(r=>r.includes('Sin interés')))return 'descartado';
-  // Visitado con muestras
+  if(resultados.some(r=>r.includes('Sin interés')||r.includes('Ya no está interesado')))return 'descartado';
+  // Cita concertada
+  if(resultados.some(r=>r.includes('Concertamos cita')||r.includes('Aceptaron cita')))return 'cita';
+  // Con interés CONFIRMADO = ellos contactaron o respondieron positivamente
+  // pero solo si la última acción relevante no fue sin respuesta
+  const ultimaAccion=acciones[acciones.length-1];
+  const hayRespuestaPositiva=resultados.some(r=>r.includes('Con interés')&&!r.includes('Sin respuesta'));
+  const hayAccionSinRespuesta=['llamada_seguimiento','whatsapp_seguimiento'].includes(ultimaAccion?.tipo)
+    && (ultimaAccion?.resultado||'').includes('Sin respuesta')||
+    (ultimaAccion?.resultado||'').includes('No contestó');
+  // Si hubo muestras + seguimiento sin respuesta = seguimiento pendiente
+  if(tipos.includes('muestras')&&(tipos.includes('llamada_seguimiento')||tipos.includes('whatsapp_seguimiento'))){
+    const ultimosSeguimientos=acciones.filter(a=>['llamada_seguimiento','whatsapp_seguimiento'].includes(a.tipo));
+    const todosNegativo=ultimosSeguimientos.every(a=>(a.resultado||'').includes('Sin respuesta')||(a.resultado||'').includes('No contestó'));
+    if(todosNegativo)return 'seguimiento';
+  }
+  // Visitado con muestras (sin seguimiento aún)
   if(tipos.includes('muestras'))return 'seguimiento';
   // Visita con cita
   if(tipos.includes('visita_con_cita'))return 'visitado';
-  // Cita concertada (resultado de acción)
-  if(resultados.some(r=>r.includes('cita')||r.includes('Cita')))return 'cita';
-  // Con interés confirmado (ellos respondieron positivamente)
-  if(resultados.some(r=>r.includes('Con interés')||r.includes('interesados')))return 'interes';
-  // Dossier enviado
-  if(tipos.includes('dossier_sin_precio'))return 'dossier';
-  // Visita sin cita (sin muestras aún)
+  // Con interés confirmado (ellos respondieron positivamente y no hay seguimiento sin respuesta posterior)
+  if(hayRespuestaPositiva&&!hayAccionSinRespuesta)return 'interes';
+  // Dossier enviado sin respuesta
+  if(tipos.includes('dossier_sin_precio')){
+    const dossierResultados=acciones.filter(a=>a.tipo==='dossier_sin_precio').map(a=>a.resultado||'');
+    if(dossierResultados.every(r=>r.includes('Sin respuesta')))return 'seguimiento_visita';
+  }
+  // Visita sin cita
   if(tipos.includes('visita_sin_cita'))return 'seguimiento_visita';
   // Contactado
   if(tipos.some(t=>['llamada','email','whatsapp'].includes(t)))return 'contactado';
@@ -1338,7 +1352,7 @@ function proximoPaso(acciones){
     interes:'📅 Confirma la cita. Prepara presentación y dossier CON precios.',
     cita:'🤝 Visita concertada. Lleva: dossier CON precios + muestras + trípticos. Sé puntual.',
     visitado:'📋 Ya entregaste dossier CON precios. Llama en 7 días para hacer seguimiento.',
-    seguimiento:'🔔 Sin respuesta tras muestras. Llama para preguntar qué les parecieron los productos.',
+    seguimiento:'🔔 Sin respuesta tras muestras y seguimientos. Espera unos días más o pasa de nuevo en persona.',
     pedido:'🎉 ¡Pedido cerrado! Planifica la entrega y la siguiente reposición.',
     descartado:'❌ Sin interés confirmado. No invertir más tiempo en este establecimiento.'
   };
