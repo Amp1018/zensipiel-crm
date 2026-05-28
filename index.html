@@ -831,14 +831,84 @@ function setBarrio(val){
   renderLista();
 }
 
-function cargarDatos(){
-  const s=localStorage.getItem('zen_crm_v3');
-  if(s){try{clientes=JSON.parse(s);calcularScoresFaltantes();return;}catch(e){}}
-  clientes=JSON.parse(JSON.stringify(HERBOLARIOS_INICIALES));
-  calcularScoresFaltantes();
-  guardarDatos();
+// ═══════════════════════════════════════════════════
+// SUPABASE — BASE DE DATOS EN LA NUBE
+// ═══════════════════════════════════════════════════
+const SUPABASE_URL='https://cffssnkmfgrcsz vrdjgs.supabase.co';
+const SUPABASE_KEY='sb_publishable_CmKfzbHTl1CoJBxMGuGmOg_2WdoxCbm';
+const TABLA='clientes';
+
+async function supaFetch(method, body=null, id=null){
+  const url=`${SUPABASE_URL}/rest/v1/${TABLA}${id?`?id=eq.${id}`:''}`;
+  const res=await fetch(url,{
+    method,
+    headers:{
+      'apikey':SUPABASE_KEY,
+      'Authorization':`Bearer ${SUPABASE_KEY}`,
+      'Content-Type':'application/json',
+      'Prefer': method==='POST'?'return=representation':'return=representation'
+    },
+    body:body?JSON.stringify(body):null
+  });
+  if(!res.ok){const e=await res.text();console.error('Supabase error:',e);return null;}
+  return res.json().catch(()=>null);
 }
-function guardarDatos(){localStorage.setItem('zen_crm_v3',JSON.stringify(clientes));}
+
+async function cargarDatos(){
+  mostrarCargando(true);
+  try{
+    const rows=await supaFetch('GET');
+    if(rows&&rows.length>0){
+      clientes=rows.map(r=>({...r.datos, _id:r.id, nombre:r.nombre}));
+    } else {
+      // Primera vez — cargar datos iniciales
+      clientes=JSON.parse(JSON.stringify(HERBOLARIOS_INICIALES));
+      await guardarDatos();
+    }
+    calcularScoresFaltantes();
+  }catch(e){
+    console.error('Error cargando datos:',e);
+    // Fallback a localStorage si no hay conexión
+    const s=localStorage.getItem('zen_crm_v3');
+    if(s)clientes=JSON.parse(s);
+    else clientes=JSON.parse(JSON.stringify(HERBOLARIOS_INICIALES));
+  }
+  mostrarCargando(false);
+}
+
+async function guardarDatos(){
+  try{
+    // Guardar también en localStorage como backup
+    localStorage.setItem('zen_crm_v3',JSON.stringify(clientes));
+    // Sincronizar con Supabase
+    for(const c of clientes){
+      const nombre=c.nombre||'Sin nombre';
+      const datos={...c};
+      delete datos._id;
+      if(c._id){
+        await supaFetch('PATCH',{nombre,datos},c._id);
+      } else {
+        const res=await supaFetch('POST',{nombre,datos});
+        if(res&&res[0])c._id=res[0].id;
+      }
+    }
+  }catch(e){
+    console.error('Error guardando:',e);
+    localStorage.setItem('zen_crm_v3',JSON.stringify(clientes));
+  }
+}
+
+function mostrarCargando(show){
+  let el=document.getElementById('cargandoMsg');
+  if(!el){
+    el=document.createElement('div');
+    el.id='cargandoMsg';
+    el.style.cssText='position:fixed;top:0;left:0;right:0;background:var(--verde);color:white;text-align:center;padding:8px;font-size:13px;font-weight:600;z-index:9999;';
+    el.textContent='⏳ Sincronizando con la nube...';
+    document.body.appendChild(el);
+  }
+  el.style.display=show?'block':'none';
+}
 
 // Calcula Score automático para los que no lo tienen
 function calcularScoresFaltantes(){
@@ -1685,18 +1755,18 @@ function exportar(){
   a.click();
 }
 
-function resetearDatos(){
+async function resetearDatos(){
   if(confirm('Esto recargará la lista completa con los 35 herbolarios. Los clientes nuevos que hayas añadido tú se conservarán. ¿Continuar?')){
     const existentes = JSON.parse(localStorage.getItem('zen_crm_v3')||'[]');
     const nombresIniciales = HERBOLARIOS_INICIALES.map(h=>h.nombre);
     const soloNuevos = existentes.filter(c=>!nombresIniciales.includes(c.nombre));
     clientes = [...JSON.parse(JSON.stringify(HERBOLARIOS_INICIALES)), ...soloNuevos];
-    guardarDatos();renderLista();poblarBarrios();
+    await guardarDatos();renderLista();poblarBarrios();
     alert('✅ Lista recargada con '+clientes.length+' clientes.');
   }
 }
 
-cargarDatos();poblarBarrios();renderLista();
+cargarDatos().then(()=>{poblarBarrios();renderLista();});
 
 </script>
 </body>
