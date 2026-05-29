@@ -966,20 +966,8 @@ const hoy=new Date();
 document.getElementById('fechaHoy').textContent=`${hoy.getDate()} ${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
 
 function renderStats(lista){
-  // Si se pasa la lista filtrada, muestra sus conteos; si no, usa todos
-  const base = lista || clientes;
-  const total = base.length;
-  const porEstado = (e) => base.filter(c=>c.estado===e).length;
-  const conInteres = ['interes','cita','dossier','contactado','seguimiento_visita'].reduce((s,e)=>s+porEstado(e),0);
-  const visitados  = ['visitado','seguimiento'].reduce((s,e)=>s+porEstado(e),0);
-  const pedidos    = porEstado('pedido');
-  const pendientes = porEstado('pendiente');
-  document.getElementById('statsBar').innerHTML=`
-    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">TOTAL</div></div>
-    <div class="stat"><div class="stat-n" style="color:var(--amber)">${pendientes}</div><div class="stat-l">PENDIENTE</div></div>
-    <div class="stat"><div class="stat-n" style="color:var(--verde)">${conInteres}</div><div class="stat-l">CONTACTADO</div></div>
-    <div class="stat"><div class="stat-n" style="color:var(--azul)">${visitados}</div><div class="stat-l">VISITADOS</div></div>
-    <div class="stat"><div class="stat-n" style="color:var(--verde)">${pedidos}</div><div class="stat-l">PEDIDOS</div></div>`;
+  const base = clientes;   const total = base.length;   const p = (e) => base.filter(c=>c.estado===e).length;   const estados = [     {val:'todos',label:'TOTAL',n:total,color:'var(--verde)'},     {val:'pendiente',label:'PENDIENTE',n:p('pendiente'),color:'var(--amber)'},     {val:'contactado_llamada',label:'CONT.LLAMADA',n:p('contactado_llamada'),color:'var(--azul)'},     {val:'contactado_presencial',label:'CONT.PRESENCIAL',n:p('contactado_presencial'),color:'var(--azul)'},     {val:'dossier_sin_precio',label:'DOSSIER S/P',n:p('dossier_sin_precio'),color:'var(--azul)'},     {val:'visitado_muestras',label:'VISITADO',n:p('visitado_muestras'),color:'#27ae60'},     {val:'dossier_con_precio',label:'DOSSIER C/P',n:p('dossier_con_precio'),color:'#27ae60'},     {val:'seguimiento_pre',label:'SEGUIM.PRE',n:p('seguimiento_pre'),color:'var(--amber)'},     {val:'primer_pedido',label:'1ER PEDIDO',n:p('primer_pedido'),color:'#e67e22'},     {val:'cliente_activo',label:'CLIENTE',n:p('cliente_activo'),color:'var(--verde)'},     {val:'seguimiento_post',label:'SEGUIM.POST',n:p('seguimiento_post'),color:'#e67e22'},     {val:'descartado',label:'DESCARTADO',n:p('descartado'),color:'var(--rojo)'},   ];   const bar=document.getElementById('statsBar');   bar.style.gridTemplateColumns='repeat(6,1fr)';   bar.innerHTML=estados.map(e=>`<div class="stat" onclick="setFP('estado','${e.val}',null)" style="cursor:pointer;border:2px solid ${filtros.estado===e.val?e.color:'transparent'};border-radius:var(--radius-sm);padding:4px"><div class="stat-n" style="color:${e.color};font-size:15px">${e.n}</div><div class="stat-l">${e.label}</div></div>`).join('');
+ 
 }
 
 
