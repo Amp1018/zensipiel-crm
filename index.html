@@ -1049,7 +1049,11 @@ function zonaCumple(c, geo){
 function setFP(grupo, val, el){
   filtros[grupo]=val;
   document.querySelectorAll(`.fp-btn[data-grupo="${grupo}"]`).forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');
+  if(el) el.classList.add('active');
+  else {
+    const btn = document.querySelector(`.fp-btn[data-grupo="${grupo}"][data-val="${val}"]`);
+    if(btn) btn.classList.add('active');
+  }
   renderLista();
 }
 
@@ -1227,9 +1231,9 @@ function editarCliente(idx){
   const checks_ids=['ck_web','ck_instagram','ck_facebook','ck_google','ck_champu','ck_acond','ck_aceite','ck_natural','ck_organica','ck_solidos'];
   checks_ids.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('on',!!(c.checks&&c.checks[id]));});
   setDossierCanal(c.dossier_canal||'');setInteres(c.interes||'');
-  document.getElementById('f_dossier_fecha').value=c.dossier_fecha||'';
-  document.getElementById('f_contestacion').value=c.contestacion||'';
-  document.getElementById('f_contestacion_fecha').value=c.contestacion_fecha||'';
+  if(document.getElementById('f_dossier_fecha')) document.getElementById('f_dossier_fecha').value=c.dossier_fecha||'';
+  if(document.getElementById('f_contestacion')) document.getElementById('f_contestacion').value=c.contestacion||'';
+  if(document.getElementById('f_contestacion_fecha')) document.getElementById('f_contestacion_fecha').value=c.contestacion_fecha||'';
   setCanal(c.canal||'');setRating(c.rating||0);setEstado(c.estado||'pendiente');
   setTrafico(c.trafico||'');setWeb(c.web||'');
   muestras={...{champu:0,acond:0,aceite:0},...(c.muestras||{})};renderMuestras();
@@ -1569,9 +1573,9 @@ function leerFicha(){
     fecha_visita:document.getElementById('f_fecha_visita').value,
     hora_visita:document.getElementById('f_hora_visita').value,
     dossier_canal:dossierCanalActual,
-    dossier_fecha:document.getElementById('f_dossier_fecha').value,
-    contestacion:document.getElementById('f_contestacion').value,
-    contestacion_fecha:document.getElementById('f_contestacion_fecha').value,
+    dossier_fecha:document.getElementById('f_dossier_fecha')?.value||'',
+    contestacion:document.getElementById('f_contestacion')?.value||'',
+    contestacion_fecha:document.getElementById('f_contestacion_fecha')?.value||'',
     interes:interesActual,
     canal:canalActual,rating:ratingActual,
     // estado calculado automáticamente desde acciones — no se sobreescribe aquí
